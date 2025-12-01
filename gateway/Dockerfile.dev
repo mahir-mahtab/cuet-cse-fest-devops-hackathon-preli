@@ -1,0 +1,20 @@
+# Development Dockerfile for Gateway
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including devDependencies for nodemon)
+RUN npm install
+
+# Copy source code (will be overridden by volume mount in development)
+COPY src ./src
+
+# Expose gateway port
+EXPOSE 5921
+
+# Start with hot-reloading using nodemon
+CMD ["npm", "run", "dev"]

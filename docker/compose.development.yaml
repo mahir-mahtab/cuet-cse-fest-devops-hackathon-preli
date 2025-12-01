@@ -1,6 +1,65 @@
-# services:
-  # backend:
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    container_name: backend-dev
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/${MONGO_DATABASE}?authSource=admin
+      - BACKEND_PORT=${BACKEND_PORT}
+    expose:
+      - "${BACKEND_PORT}"
+    volumes:
+      - ../backend/src:/app/src
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
 
-  # gateway:
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile.dev
+    container_name: gateway-dev
+    environment:
+      - NODE_ENV=development
+      - GATEWAY_PORT=${GATEWAY_PORT}
+      - BACKEND_URL=http://backend:${BACKEND_PORT}
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    volumes:
+      - ../gateway/src:/app/src
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
 
-  # mongo:
+  mongo:
+    image: mongo:7
+    container_name: mongo-dev
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_DATABASE}
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
